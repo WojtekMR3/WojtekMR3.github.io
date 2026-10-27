@@ -248,15 +248,20 @@
 .hero__title,
 .hero__lede { text-shadow: 0 1px 18px rgba(var(--shade), .55); }
 
+/* Spaced capitals, like a film credit. The trailing letter space is pulled back so
+   right-aligned and centred labels line up with the title. */
 .hero__brand {
-  margin: 0 0 calc(16 * var(--u));
+  margin: 0 0 calc(18 * var(--u));
   font-family: var(--font-brand);
   font-weight: 600;
-  font-size: calc(22 * var(--u));
+  font-size: calc(16 * var(--u));
   line-height: 1;
-  letter-spacing: -.01em;
+  letter-spacing: .26em;
+  text-transform: uppercase;
   color: var(--teal);
 }
+.hero[data-x="right"] .hero__brand { margin-right: -.26em; }
+.hero[data-x="center"] .hero__brand { margin-right: -.26em; }
 
 .hero__title {
   margin: 0;
@@ -543,21 +548,70 @@
   .logo__name { font-size: max(16px, calc(15 * var(--u))); }
   .nav__link,
   .nav__cv { font-size: max(15px, calc(13 * var(--u))); }
-  .hero__brand { font-size: max(24px, calc(22 * var(--u))); }
+  .hero__brand { font-size: max(16px, calc(16 * var(--u))); }
   .hero__lede { font-size: max(19px, calc(17 * var(--u))); }
   .hero .cta,
   .hero .text-link { font-size: max(16px, calc(15 * var(--u))); }
   .cue { font-size: max(15px, calc(13 * var(--u))); }
 }
 
-/* ---------- Wider than 2:1 (ultrawide monitors) ----------
-   The first screen keeps to a centred 2:1 frame, which is what a maximised browser on a
-   16:9 monitor shows, so the captions sit where they do there instead of drifting to the
-   far edges. Moving the gutters moves the header, hero and scroll cue together; every use
-   is a left/right offset, so 100% is the stage width. Below 2:1 nothing moves. */
-@media (min-aspect-ratio: 2/1) and (min-height: 501px) {
+/* ---------- Film look: letterbox, vignette, grain ----------
+   Desktop screens narrower than 2.39:1 (16:9, 16:10) get black bars top and bottom so the
+   video reads as a widescreen film; 21:9 monitors are already that wide and get none.
+   The bars open once on load. The hero and scroll cue sit above the bottom bar. */
+.film {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(ellipse 80% 75% at 50% 45%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, .45) 100%);
+}
+.film::before,
+.film::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  height: var(--bar, 0px);
+  background: var(--page);
+  animation: bar-in 1.6s var(--ease-expo) .1s both;
+}
+.film::before { top: 0; transform-origin: 50% 0; }
+.film::after { bottom: 0; transform-origin: 50% 100%; }
+@keyframes bar-in {
+  from { transform: scaleY(0); }
+}
+
+/* Grain: a tiled noise texture jumped around a few times a second. It moves by transform
+   only, so the browser never repaints it. */
+.film__grain {
+  position: absolute;
+  inset: -8%;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: .1;
+  mix-blend-mode: overlay;
+  animation: grain .9s steps(1) infinite;
+}
+@keyframes grain {
+  0%   { transform: translate(0, 0); }
+  17%  { transform: translate(-3%, 2%); }
+  33%  { transform: translate(2%, -4%); }
+  50%  { transform: translate(-4%, -1%); }
+  67%  { transform: translate(4%, 3%); }
+  83%  { transform: translate(-1%, 4%); }
+}
+
+@media (min-width: 900px) and (min-height: 501px) and (min-aspect-ratio: 4/3) {
   :root {
-    --gl: max(var(--gutter), env(safe-area-inset-left), (100% - 200dvh) / 2 + var(--gutter));
-    --gr: max(var(--gutter), env(safe-area-inset-right), (100% - 200dvh) / 2 + var(--gutter));
+    --bar: clamp(0px, (100dvh - 100vw / 2.39) / 2, 11dvh);
+    --bottom: max(calc(64 * var(--u)), env(safe-area-inset-bottom), calc(var(--bar) + 24px));
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .film::before,
+  .film::after,
+  .film__grain { animation: none; }
 }

@@ -222,12 +222,14 @@
     const EASE_IN = "cubic-bezier(0.7, 0, 0.84, 0)";
     const EASE_OUT = "cubic-bezier(0.16, 1, 0.3, 1)";
     const hero = $(".hero");
+    const copy = $(".hero__copy");
     const brand = $(".hero__brand");
     const lines = $$(".hero__title .line__inner");
     const ledes = $$(".hero__lede span");
     const fades = [brand].concat(ledes);
     let current = 0;
     let running = [];
+    let drifting = null;
 
     function slideAt(seconds) {
       let index = 0;
@@ -250,24 +252,36 @@
       hero.dataset.x = ["left", "center", "right"].includes(parts[1]) ? parts[1] : "left";
     }
 
+    // Lines slide through their masks and pull focus (blur to sharp), like a film title.
     function leave() {
       return lines.map((el, i) => el.animate(
-        [{ transform: "none" }, { transform: "translateY(-115%)" }],
+        [{ transform: "none", filter: "blur(0)" }, { transform: "translateY(-115%)", filter: "blur(6px)" }],
         { delay: 40 * i, duration: 380, easing: EASE_IN, fill: "forwards" }
       )).concat(fades.map((el) => el.animate(
-        [{ opacity: 1 }, { opacity: 0 }],
+        [{ opacity: 1, filter: "blur(0)" }, { opacity: 0, filter: "blur(4px)" }],
         { duration: 300, easing: "ease-in", fill: "forwards" }
       )));
     }
 
     function enter() {
       return lines.map((el, i) => el.animate(
-        [{ transform: "translateY(115%)" }, { transform: "none" }],
-        { delay: 70 * i, duration: 900, easing: EASE_OUT, fill: "backwards" }
+        [{ transform: "translateY(115%)", filter: "blur(10px)" }, { transform: "none", filter: "blur(0)" }],
+        { delay: 70 * i, duration: 1000, easing: EASE_OUT, fill: "backwards" }
       )).concat(fades.map((el, i) => el.animate(
-        [{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }],
-        { delay: 150 + 60 * i, duration: 700, easing: EASE_OUT, fill: "backwards" }
+        [{ opacity: 0, transform: "translateY(8px)", filter: "blur(6px)" }, { opacity: 1, transform: "none", filter: "blur(0)" }],
+        { delay: 150 + 60 * i, duration: 800, easing: EASE_OUT, fill: "backwards" }
       )));
+    }
+
+    // While a slide holds, the copy drifts slowly toward the middle of the frame, like a
+    // slow camera move. It is cancelled while the copy is hidden, before the next slide.
+    function drift() {
+      const dx = { left: 18, center: 0, right: -18 }[hero.dataset.x] || 0;
+      const dy = dx === 0 ? -10 : 0;
+      return copy.animate(
+        [{ transform: "none" }, { transform: "translate(" + dx + "px, " + dy + "px)" }],
+        { duration: 7000, easing: "cubic-bezier(0.3, 0, 0.4, 1)", fill: "forwards" }
+      );
     }
 
     function show(index) {
@@ -279,9 +293,11 @@
       running = out;
       Promise.all(out.map((anim) => anim.finished)).then(() => {
         fill(slides[index]);
+        if (drifting) drifting.cancel();
         place(slides[index]);
         hero.classList.remove("is-moving");
         running = enter();
+        drifting = drift();
         // The entering animations hold their start frame, so the exit fill can go.
         out.forEach((anim) => anim.cancel());
       }, () => {
